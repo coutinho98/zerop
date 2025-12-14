@@ -25,6 +25,6 @@ services:
       - db
     env_file:
       - .env
-
+    command: npm run start:dev
 volumes:
   postgres_data:

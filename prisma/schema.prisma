@@ -1,14 +1,87 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+
+enum BusinessType {
+  PET_STORE
+  GYM
+}
+
+model Business {
+  id              String         @id @default(cuid())
+  name            String         @unique
+  type            BusinessType
+  address         String?
+  phone           String?
+  
+  customers       Customer[]
+  products        Product[]
+  sales           Sale[]
+
+  @@map("businesses")
+}
+
+model Customer {
+  id              String         @id @default(cuid())
+  businessId      String
+  name            String
+  phone           String?
+  email           String?
+  
+  business        Business       @relation(fields: [businessId], references: [id])
+  sales           Sale[]
+
+  @@unique([businessId, email])
+  @@map("customers")
+}
+
+model Product {
+  id              String         @id @default(cuid())
+  businessId      String
+  name            String
+  description     String?
+  price           Decimal        @default(0.0)
+  isService       Boolean        @default(false)
+  
+  business        Business       @relation(fields: [businessId], references: [id])
+  saleItems       SaleItem[]
+
+  @@unique([businessId, name])
+  @@map("products")
+}
+
+model Sale {
+  id              String         @id @default(cuid())
+  businessId      String
+  customerId      String
+  saleDate        DateTime       @default(now())
+  totalAmount     Decimal
+  
+  business        Business       @relation(fields: [businessId], references: [id])
+  customer        Customer       @relation(fields: [customerId], references: [id])
+  items           SaleItem[]
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id              String         @id @default(cuid())
+  saleId          String
+  productId       String
+  quantity        Int
+  unitPrice       Decimal
+  
+  sale            Sale           @relation(fields: [saleId], references: [id])
+  product         Product        @relation(fields: [productId], references: [id])
+  
+  @@unique([saleId, productId])
+  @@map("sale_items")
 }
