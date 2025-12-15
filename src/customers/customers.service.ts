@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -7,9 +7,9 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class CustomersService {
   constructor(private prisma: PrismaService) { }
 
-  async create(createCustomerDto: CreateCustomerDto) {
+  async create(createCustomerDto: CreateCustomerDto, businessId: string) {
     const business = await this.prisma.business.findUnique({
-      where: { id: createCustomerDto.businessId },
+      where: { id: businessId },
     })
 
     if (!business) {
@@ -18,25 +18,49 @@ export class CustomersService {
 
     return this.prisma.customer.create({
       data: {
-        name: createCustomerDto.name,
-        businessId: createCustomerDto.businessId,
+        ...createCustomerDto,
+        businessId,
       },
     });
   }
 
-  findAll() {
-    return `This action returns all customers`;
+  findAll(businessId: string) {
+    return this.prisma.customer.findMany({
+      where: { businessId },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} customer`;
+  findOne(id: string, businessId: string) {
+    return this.prisma.customer.findUnique({
+      where: { id, businessId },
+    });
   }
 
-  update(id: number, updateCustomerDto: UpdateCustomerDto) {
-    return `This action updates a #${id} customer`;
+  async update(id: string, updateCustomerDto: UpdateCustomerDto, businessId: string) {
+    try {
+      return await this.prisma.customer.update({
+        where: { id, businessId }, 
+        data: updateCustomerDto,
+      });
+    } catch (error) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`Customer with ID ${id} not found in this business.`);
+      }
+      throw error;
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} customer`;
+  async remove(id: string, businessId: string) {
+    try {
+      await this.prisma.customer.delete({
+        where: { id, businessId }, 
+      });
+      return { success: true, message: `Customer ${id} removed.` };
+    } catch (error) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`Customer with ID ${id} not found in this business.`);
+      }
+      throw error;
+    }
   }
 }
